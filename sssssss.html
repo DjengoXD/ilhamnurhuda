@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jadwal Proses Round-Robin</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #a5c0dc;
+        }
+
+        .container {
+            margin-top: 50px;
+            margin-bottom: 50px;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: #ffe1e1;
+        }
+
+       
+		body {
+			background-color: #e0efff;
+		}
+		
+		.container {
+			margin-top: 50px;
+			margin-bottom: 50px;
+			padding: 30px;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(210, 83, 83, 0.1);
+			background-color: #94d0fc;
+		}
+		
+		.form-group {
+			margin-bottom: 20px;
+		}
+		
+		.btn-primary {
+			background-color: #61a6f0;
+			border-color: #ffffff;
+		}
+		
+		.btn-primary:hover {
+			background-color: #24d900;
+			border-color: #18cc00;
+		}
+		
+		.table {
+			margin-top: 30px;
+		}
+		
+		.table thead th {
+			background-color: #f8f9fa;
+			border-color: #dee2e6;
+		}
+		
+		.text-center {
+			text-align: center;
+		}
+	</style>
+ 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center">Jadwal Proses Round-Robin</h2>
+        <form id="myForm">
+			<div class="form-group">
+				<label for="processes">Masukkan daftar proses:</label>
+				<input type="text" class="form-control" id="processes" placeholder="Contoh: P1, P2, P3">
+			</div>
+			<div class="form-group">
+				<label for="arrivalTimes">Masukkan waktu tiba:</label>
+				<input type="text" class="form-control" id="arrivalTimes" placeholder="Contoh: 0, 2, 4">
+			</div>
+			<div class="form-group">
+				<label for="cpuTimes">Masukkan waktu CPU:</label>
+				<input type="text" class="form-control" id="cpuTimes" placeholder="Contoh: 6, 4, 2">
+				<small id="cpuTimesHelp" class="form-text text-muted">Masukkan waktu CPU dalam satuan waktu (ms).</small>
+			</div>
+			<div class="form-group">
+				<label for="quantumTime">Masukkan quantum time:</label>
+				<input type="number" class="form-control" id="quantumTime" placeholder="Contoh: 2">
+				<small id="quantumTimeHelp" class="form-text text-muted">Masukkan quantum time dalam satuan waktu (ms).</small>
+			</div>
+            <div class="form-group">
+				<label for="timeSlice">Masukkan time slice:</label>
+				<input type="number" class="form-control" id="timeSlice" placeholder="Contoh: 1">
+				<small id="timeSliceHelp" class="form-text text-muted">Masukkan time slice dalam satuan waktu (ms).</small>
+			</div>
+			<button type="button" class="btn btn-primary btn-block" onclick="generateSchedule()">Jadwal</button>
+		</form>
+        <br>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Proses</th>
+                    <th>Waktu Tiba</th>
+                    <th>Waktu CPU</th>
+                    <th>Quantum Time</th>
+                    <th>Time Slice</th>
+                    <th>Waktu Selesai</th>
+                    <th>Turnaround Time</th>
+                </tr>
+            </thead>
+            <tbody id="scheduleTableBody">
+            </tbody>
+        </table>
+        <canvas id="processChart"></canvas>
+        <p id="averageTurnaroundTime" class="text-center"></p>
+    </div>
+    <footer class="footer fixed-bottom">
+        <div class="container">
+            <p class="text-center">&copy; 2023 Ilham Nurhuda. All rights reserved.</p>
+        </div>
+    </footer>
+    <script>
+
+        function generateSchedule() {
+            var processes = $('#processes').val().split(',').map(function(item) {
+                return item.trim();
+            });
+            var arrivalTimes = $('#arrivalTimes').val().split(',').map(function(item) {
+                return parseInt(item.trim());
+            });
+            var cpuTimes = $('#cpuTimes').val().split(',').map(function(item) {
+                return parseInt(item.trim());
+            });
+            var quantumTime = parseInt($('#quantumTime').val().trim());
+            var timeSlice = parseInt($('#timeSlice').val().trim());
+            var time = 0;
+            var remainingTime = cpuTimes.slice();
+            var turnaroundTimes = [];
+
+            var finished = false;
+            var scheduleTableBody = $('#scheduleTableBody');
+            scheduleTableBody.empty();
+
+            while (!finished) {
+                finished = true;
+                for (var i = 0; i < processes.length; i++) {
+                    if (remainingTime[i] > 0) {
+                        finished = false;
+                        var executeTime = remainingTime[i] > quantumTime ? quantumTime : remainingTime[i];
+                        remainingTime[i] -= executeTime;
+                        time += executeTime;
+                        var turnaroundTime = time - arrivalTimes[i];
+                        var row = $('<tr>');
+                        row.append($('<td>').text(processes[i]));
+                        row.append($('<td>').text(arrivalTimes[i]));
+                        row.append($('<td>').text(cpuTimes[i]));
+                        row.append($('<td>').text(quantumTime));
+                        row.append($('<td>').text(timeSlice));
+                        row.append($('<td>').text(time));
+                        row.append($('<td>').text(turnaroundTime));
+                        scheduleTableBody.append(row);
+                        turnaroundTimes.push(turnaroundTime);
+                    }
+                }
+            }
+
+            var averageTurnaroundTime = turnaroundTimes.reduce(function(sum, value) {
+                return sum + value;
+            }, 0) / turnaroundTimes.length;
+            $('#averageTurnaroundTime').text('Average Turnaround Time: ' + averageTurnaroundTime.toFixed(2));
+
+            // Generate process chart
+            var processChart = new Chart(document.getElementById('processChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: processes,
+                    datasets: [
+                        {
+                            label: 'Arrival Time',
+                            data: arrivalTimes,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            fill: false
+                        },
+                        {
+                            label: 'Completion Time',
+                            data: cpuTimes.map(function(cpuTime, index) {
+                                return cpuTime - remainingTime[index];
+                            }),
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Process'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            $('#myForm').submit(function(e) {
+                e.preventDefault();
+                generateSchedule();
+            });
+        });
+
+    </script>
+</body>
+</html>
